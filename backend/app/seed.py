@@ -203,6 +203,7 @@ def build_demo_items():
             "role": role,
             "name": name,
             "scope": scope,
+            "region": scope if role == "ops" else "",
             "email": DEMO_USERS[user_id]["email"],
         }
         for user_id, role, name, scope in [

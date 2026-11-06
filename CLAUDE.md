@@ -14,7 +14,7 @@ The local Compose stack contains Vite/React, FastAPI, DynamoDB Local, and the lo
 
 - `make test`: backend pytest rules/API tests plus frontend TypeScript and production build checks.
 - `make deploy`: build and upload the Lambda package, deploy `infra/template.yaml` with CloudFormation in `AWS_REGION` (default `eu-central-1`), then publish the static site.
-- `make destroy`: delete the CloudFormation stack. S3 buckets may need manual emptying if deployment populated them; the command explains this rather than deleting user data.
+- `make destroy`: delete the CloudFormation stack. Site assets are removed; the evidence bucket is retained so uploaded photos are not silently deleted.
 - AWS deployment requires the AWS CLI, Docker, and configured credentials for the selected `AWS_PROFILE`.
 
 ## Conventions

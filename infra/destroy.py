@@ -24,11 +24,18 @@ def main():
         "--query", "Stacks[0].Outputs[?OutputKey==`SiteBucketName`].OutputValue | [0]",
         "--output", "text", capture=True,
     )
+    evidence_bucket = aws(
+        "cloudformation", "describe-stacks", "--stack-name", STACK,
+        "--query", "Stacks[0].Outputs[?OutputKey==`EvidenceBucketName`].OutputValue | [0]",
+        "--output", "text", capture=True,
+    )
     if site_bucket and site_bucket != "None":
         aws("s3", "rm", f"s3://{site_bucket}", "--recursive")
     aws("cloudformation", "delete-stack", "--stack-name", STACK)
     aws("cloudformation", "wait", "stack-delete-complete", "--stack-name", STACK)
-    print(f"Deleted stack {STACK}. The separate deployment-artifact bucket was retained.")
+    print(f"Deleted stack {STACK}.")
+    if evidence_bucket and evidence_bucket != "None":
+        print(f"Evidence bucket retained to preserve uploaded photos: {evidence_bucket}")
 
 
 if __name__ == "__main__":

@@ -10,5 +10,7 @@ backend/.venv/
 *.py[cod]
 .DS_Store
 .coverage
+.uploads/
+backend/uploads/
 coverage.xml
 .build-*/

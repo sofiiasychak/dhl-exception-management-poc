@@ -25,10 +25,12 @@ def token(*roles: str, user_id: str = "demo-user"):
 
 
 class FakeCaseService:
-    def list_cases(self, user):
+    def list_cases(self, user, **_filters):
         return [{"owner_id": user.user_id}]
 
-    def case_detail(self, case_id):
+    def case_detail(self, case_id, _user=None):
+        if _user and _user.role.value in {"courier", "depot"}:
+            raise PermissionError("This case has no action assigned to you.")
         return {"case_id": case_id, "timeline": [], "actions": [], "messages": []}
 
 
@@ -59,7 +61,11 @@ def test_case_api_requires_jwt_and_ops_group(monkeypatch):
 
 
 def test_field_actions_require_field_role_and_are_scoped_to_token_user(monkeypatch):
-    monkeypatch.setattr("app.features.field.router.FieldService", FakeFieldService)
+    class FakeCaseService:
+        def list_field_actions(self, user, day):
+            return [{"assignee_id": user.user_id, "date": day.isoformat()}]
+
+    monkeypatch.setattr("app.features.field.router.CaseService", FakeCaseService)
     client = TestClient(app)
     assert client.get(
         "/api/field/actions",
@@ -89,12 +95,17 @@ def test_case_detail_is_available_to_ops_and_support_only(monkeypatch):
 def test_communication_queues_are_support_only(monkeypatch):
     class FakeCommunicationService:
         def list_queue(self, queue_name):
-            return [{"queue_name": queue_name}]
+            return [{"case_id": "EX-1", "queue_name": queue_name}]
 
     monkeypatch.setattr(
         "app.features.communication.router.CommunicationService",
         FakeCommunicationService,
     )
+    class FakeCaseService:
+        def case_detail(self, case_id, user):
+            return {"case_id": case_id}
+
+    monkeypatch.setattr("app.features.communication.router.CaseService", FakeCaseService)
     client = TestClient(app)
     assert client.get(
         "/api/communication/queues/not_informed",
@@ -104,7 +115,7 @@ def test_communication_queues_are_support_only(monkeypatch):
         "/api/communication/queues/not_informed",
         headers={"Authorization": f"Bearer {token('support')}"},
     )
-    assert response.json() == [{"queue_name": "not_informed"}]
+    assert response.json() == [{"case_id": "EX-1"}]
 
 
 def test_token_with_multiple_role_groups_is_rejected():

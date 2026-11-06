@@ -155,6 +155,10 @@ Resources:
                 Resource:
                   - !GetAtt CaseTable.Arn
                   - !Sub "${CaseTable.Arn}/index/*"
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                Resource: !Sub "${EvidenceBucket.Arn}/evidence/*"
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
 
@@ -185,6 +189,7 @@ Resources:
           COGNITO_USER_POOL_ID: !Ref UserPool
           COGNITO_APP_CLIENT_ID: !Ref UserPoolClient
           LOCAL_DEV: "false"
+          EVIDENCE_BUCKET_NAME: !Ref EvidenceBucket
           WEBHOOK_SHARED_SECRET: !Join
             - ""
             - - "{{resolve:secretsmanager:"
@@ -265,6 +270,24 @@ Resources:
       OwnershipControls:
         Rules:
           - ObjectOwnership: BucketOwnerEnforced
+
+  EvidenceBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerEnforced
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
 
   CloudFrontOriginAccessControl:
     Type: AWS::CloudFront::OriginAccessControl
@@ -400,6 +423,24 @@ Resources:
               StringEquals:
                 AWS:SourceArn: !Sub "arn:${AWS::Partition}:cloudfront::${AWS::AccountId}:distribution/${SiteDistribution}"
 
+  EvidenceBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref EvidenceBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: DenyInsecureTransport
+            Effect: Deny
+            Principal: "*"
+            Action: s3:*
+            Resource:
+              - !GetAtt EvidenceBucket.Arn
+              - !Sub "${EvidenceBucket.Arn}/*"
+            Condition:
+              Bool:
+                aws:SecureTransport: false
+
 Outputs:
   SiteBucketName:
     Value: !Ref SiteBucket
@@ -413,3 +454,5 @@ Outputs:
     Value: !Ref UserPool
   UserPoolClientId:
     Value: !Ref UserPoolClient
+  EvidenceBucketName:
+    Value: !Ref EvidenceBucket
