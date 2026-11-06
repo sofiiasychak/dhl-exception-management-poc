@@ -116,6 +116,57 @@ a {
   text-align: center;
 }
 
+.demo-panel {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  padding: 0.5rem 1rem;
+  border-bottom: 1px solid hsl(var(--border));
+  background: white;
+}
+
+.demo-label {
+  margin: 0 0 0.25rem;
+  color: hsl(var(--foreground));
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.demo-panel summary {
+  min-height: 44px;
+  padding-block: 0.55rem;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.demo-steps {
+  display: grid;
+  gap: 0.4rem;
+  margin: 0.25rem 0 0.75rem;
+  padding-left: 1.5rem;
+}
+
+.demo-steps li {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.25rem 1rem;
+}
+
+.demo-step-role {
+  color: hsl(var(--muted-foreground));
+  font-size: 0.875rem;
+}
+
+.demo-step-done {
+  color: hsl(var(--muted-foreground));
+  text-decoration: line-through;
+}
+
+.demo-next {
+  min-height: 44px;
+}
+
 .priority-chip,
 .status-chip {
   display: inline-flex;

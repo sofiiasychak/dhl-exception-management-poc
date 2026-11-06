@@ -8,6 +8,8 @@ import {
   type ReactNode,
 } from "react";
 
+import { DEMO_USER_KEY, getPublicDemoUser, publicDemoMode } from "./mockApi";
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "/api";
 const TOKEN_KEY = "exception-management-id-token";
 
@@ -40,6 +42,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (publicDemoMode) {
+      const demoId = localStorage.getItem(DEMO_USER_KEY);
+      const demoUser = demoId ? getPublicDemoUser(demoId) : undefined;
+      setUser(demoUser ? { user_id: demoUser.user_id, role: demoUser.role, email: demoUser.email } : null);
+      setLoading(false);
+      return;
+    }
     const token = localStorage.getItem(TOKEN_KEY);
     if (!token) {
       setLoading(false);
@@ -101,6 +110,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const demoSignIn = useCallback(async (userId: string) => {
     try {
+      if (publicDemoMode) {
+        const demoUser = getPublicDemoUser(userId);
+        if (!demoUser) throw new Error("Demo user not found.");
+        localStorage.setItem(DEMO_USER_KEY, userId);
+        setUser({ user_id: demoUser.user_id, role: demoUser.role, email: demoUser.email });
+        setError(null);
+        return;
+      }
       const challenge = await authenticate("demo-login", { user_id: userId });
       if (challenge) throw new Error("Local demo sign-in cannot require MFA.");
     } catch (cause) {
@@ -112,6 +129,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = useCallback(() => {
     localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(DEMO_USER_KEY);
     setUser(null);
     setError(null);
   }, []);

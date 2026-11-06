@@ -15,6 +15,12 @@ import { apiRequest, postForm, postJson } from "./api";
 import { Button } from "./components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./components/ui/card";
 import { Input } from "./components/ui/input";
+import {
+  getPublicDemoProgress,
+  publicDemoMode,
+  resetPublicDemo,
+  subscribePublicDemo,
+} from "./mockApi";
 
 const localDemoEnabled = import.meta.env.VITE_LOCAL_DEMO_LOGIN === "true";
 const demoUsers: Array<{ id: string; name: string; role: Role; scope: string }> = [
@@ -177,8 +183,93 @@ function PageTitle({ title, description, children }: {
   );
 }
 
+const publicDemoChoices = [
+  { id: "thomas-a", name: "Thomas A.", role: "courier" as const },
+  { id: "marta-l", name: "Marta L.", role: "ops" as const },
+  { id: "kateryna-b", name: "Kateryna B.", role: "support" as const },
+  { id: "anna-k", name: "Anna K.", role: "depot" as const },
+];
+const demoSteps = [
+  "Courier reports a failed delivery",
+  "Operations assigns the redelivery",
+  "Support sends one customer message",
+  "Customer chooses a delivery slot",
+  "Courier marks the parcel delivered",
+  "Operations resolves the case",
+];
+const demoRoleForStep = ["courier", "ops", "support", "support", "courier", "ops"] as const;
+const demoPathForRole: Record<Role, string> = {
+  ops: "/app/cases",
+  support: "/app/updates",
+  courier: "/app/actions",
+  depot: "/app/actions",
+};
+
+function DemoGuide() {
+  const { user, demoSignIn } = useAuth();
+  const navigate = useNavigate();
+  const [progress, setProgress] = useState(getPublicDemoProgress);
+  useEffect(() => subscribePublicDemo(() => setProgress(getPublicDemoProgress())), []);
+
+  const nextRole = progress.stage < demoSteps.length ? demoRoleForStep[progress.stage] : null;
+  const nextDemoUser = nextRole
+    ? publicDemoChoices.find((choice) => choice.role === nextRole)
+    : undefined;
+  const nextPath = progress.stage === 1 || progress.stage === 5
+    ? progress.caseId ? `/app/cases/${progress.caseId}` : "/app/cases"
+    : progress.stage === 2 && progress.caseId
+      ? `/app/updates?case_id=${progress.caseId}`
+    : nextRole ? demoPathForRole[nextRole] : "";
+  const nextLabel = progress.stage === 3 ? "Open the customer-choice simulator"
+    : nextDemoUser ? `Continue as ${nextDemoUser.name} · ${roleTitles[nextDemoUser.role]}`
+      : "Demo flow complete";
+
+  async function continueDemo() {
+    const guide = document.querySelector<HTMLDetailsElement>(".demo-panel details");
+    if (guide) guide.open = false;
+    if (progress.stage === 3) {
+      if (user?.role !== "support") await demoSignIn("kateryna-b");
+      navigate(progress.caseId ? `/simulator?case_id=${progress.caseId}` : "/simulator");
+      return;
+    }
+    if (!nextDemoUser) return;
+    if (user?.user_id !== nextDemoUser.id) await demoSignIn(nextDemoUser.id);
+    navigate(nextPath);
+  }
+
+  return (
+    <section className="demo-panel" aria-label="Public demo guide">
+      <p className="demo-label">Demo with mock data · student project, not a DHL product</p>
+      <details>
+        <summary>Demo guide · {progress.stage >= 6 ? "Flow complete" : `Step ${Math.min(progress.stage + 1, 6)} of 6`}</summary>
+        <ol className="demo-steps">
+          {demoSteps.map((step, index) => (
+            <li aria-current={progress.stage === index ? "step" : undefined}
+              className={progress.stage > index ? "demo-step-done" : undefined} key={step}>
+              <span>{step}</span>
+              <span className="demo-step-role">{roleTitles[demoRoleForStep[index]]}</span>
+            </li>
+          ))}
+        </ol>
+        {progress.stage < 6 && (user || progress.stage > 0) && (
+          <Button className="demo-next" onClick={() => void continueDemo()} type="button" variant="outline">
+            {nextLabel}
+          </Button>
+        )}
+        <p className="mt-2 text-sm">
+          <Link className="font-semibold" onClick={() => {
+            if (user?.role !== "support") void demoSignIn("kateryna-b");
+          }} to={progress.caseId ? `/simulator?case_id=${progress.caseId}` : "/simulator"}>
+            Customer choice · /simulator
+          </Link>
+        </p>
+      </details>
+    </section>
+  );
+}
+
 function SignInPage() {
-  const { signIn, completeMfa, demoSignIn, error } = useAuth();
+  const { signIn, completeMfa, demoSignIn, error, signOut } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -215,6 +306,40 @@ function SignInPage() {
     } finally {
       setSubmitting(false);
     }
+  }
+
+  if (publicDemoMode) {
+    return (
+      <div className="flex min-h-screen flex-col">
+        <header className="app-header flex min-h-16 items-center px-5">
+          <span className="text-xl font-bold">Exception Management · student concept</span>
+        </header>
+        <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col justify-center gap-5 p-4 md:p-8">
+          <DemoGuide />
+          <Card>
+            <CardHeader>
+              <CardTitle>Choose a demo user</CardTitle>
+              <CardDescription>Public click-through · fictional seed data · no password required.</CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-3 sm:grid-cols-2">
+              {publicDemoChoices.map((demo) => (
+                <Button className="h-auto min-h-12 justify-start whitespace-normal py-3 text-left"
+                  key={demo.id} onClick={() => void signInDemo(demo.id)} type="button" variant="outline">
+                  {demo.name} · {roleTitles[demo.role]}
+                </Button>
+              ))}
+              {error && <ErrorMessage>{error}</ErrorMessage>}
+              <Button className="sm:col-span-2" onClick={() => {
+                resetPublicDemo();
+                signOut();
+                navigate("/sign-in", { replace: true });
+              }} type="button" variant="secondary">Reset demo data</Button>
+            </CardContent>
+          </Card>
+        </main>
+        <footer className="app-footer">Demo with mock data · student project, not a DHL product</footer>
+      </div>
+    );
   }
 
   return (
@@ -300,6 +425,7 @@ function AppLayout() {
           <Button onClick={signOut} type="button" variant="outline">Sign out</Button>
         </div>
       </header>
+      {publicDemoMode && <DemoGuide />}
       {field ? (
         <div className="field-content flex flex-col p-4">
           <p className="mb-4 text-sm text-muted-foreground">{roleTitles[user.role]} · {user.email}</p>
@@ -350,14 +476,18 @@ function AppLayout() {
     return (
       <div className="field-preview">
         {content}
-        <footer className="app-footer field-footer">Student concept · not a DHL product</footer>
+        <footer className="app-footer field-footer">
+          {publicDemoMode ? "Demo with mock data · student project, not a DHL product" : "Student concept · not a DHL product"}
+        </footer>
       </div>
     );
   }
   return (
     <div className="web-app">
       {content}
-      <footer className="app-footer">Student concept · not a DHL product</footer>
+    <footer className="app-footer">
+      {publicDemoMode ? "Demo with mock data · student project, not a DHL product" : "Student concept · not a DHL product"}
+    </footer>
     </div>
   );
 }
@@ -464,8 +594,8 @@ function CaseDetailsPage() {
   async function update(path: string, value: unknown, success: string) {
     setFeedback(null);
     try {
-      const updated = await postJson<CaseItem>(path, value);
-      if (updated?.case_id) caseResource.setData(updated);
+      await postJson(path, value);
+      caseResource.setData(await apiRequest<CaseItem>(`/cases/${caseId}`));
       setFeedback(success);
     } catch (cause) {
       setFeedback(cause instanceof Error ? cause.message : "The update failed.");
@@ -615,7 +745,7 @@ function SupportUpdatesPage() {
   const labels = ["Not informed", "Waiting for customer", "Confirm resolution"];
   const [queue, setQueue] = useState<(typeof queueNames)[number]>("not_informed");
   const casesResource = useResource(() => apiRequest<CaseItem[]>(`/communication/queues/${queue}`), [queue], 10_000);
-  const [selectedId, setSelectedId] = useState("");
+  const [selectedId, setSelectedId] = useState(() => new URLSearchParams(window.location.search).get("case_id") ?? "");
   const [templateId, setTemplateId] = useState("");
   const [channels, setChannels] = useState<string[]>(["SMS", "Email"]);
   const [body, setBody] = useState("");
@@ -648,7 +778,8 @@ function SupportUpdatesPage() {
         template_id: templateId, channel: channels.join(" and "), body,
       });
       setFeedback("Customer update saved to the case outbox.");
-      await casesResource.refresh();
+      setSelectedId(selected.case_id);
+      setQueue("waiting_for_customer");
     } catch (cause) {
       setFeedback(cause instanceof Error ? cause.message : "The message could not be saved.");
     }
@@ -760,8 +891,18 @@ function ShipmentLookupPage() {
 
 function FieldActionsPage() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const resource = useResource(() => apiRequest<FieldAction[]>("/field/actions"), [user?.user_id], 10_000);
   const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    const progress = getPublicDemoProgress();
+    if (!publicDemoMode || user?.role !== "courier" || ![0, 4].includes(progress.stage)) return undefined;
+    const timer = window.setTimeout(() => {
+      const target = progress.stage === 0 ? "ROUTE-STOP-06" : `CASE-${progress.caseId}`;
+      document.getElementById(target)?.scrollIntoView({ block: "center" });
+    }, 100);
+    return () => window.clearTimeout(timer);
+  }, [resource.loading, user?.role]);
   async function complete(actionId: string) {
     setError(null);
     try {
@@ -779,7 +920,8 @@ function FieldActionsPage() {
       <div className="space-y-4">
         {(resource.data ?? []).map((action) => {
           const shipment = action.shipment ?? action.case?.shipment;
-          return           <Card className="border-2 bg-card" key={action.action_id}>
+          const caseId = action.case?.case_id;
+          return           <Card className="border-2 bg-card" id={caseId ? `CASE-${caseId}` : action.action_id} key={action.action_id}>
             <CardHeader><div className="flex justify-between gap-3">
               <CardTitle className="text-lg">Stop {action.route_order} · {action.action_type}</CardTitle>
               {action.case?.attempt_count && <span className="whitespace-nowrap text-sm">Attempt {action.case.attempt_count} of 3</span>}
@@ -793,7 +935,7 @@ function FieldActionsPage() {
               <div className="grid grid-cols-2 gap-2">
                 <Button className="min-h-[52px]" onClick={() => void complete(action.action_id)} type="button">Delivered / Done</Button>
                 {user?.role === "courier" && action.action_type.toLowerCase().includes("delivery")
-                  ? <Button className="min-h-[52px]" onClick={() => window.location.assign(`/app/report/${action.shipment_id}?action_id=${action.action_id}`)}
+                  ? <Button className="min-h-[52px]" onClick={() => navigate(`/app/report/${action.shipment_id}?action_id=${action.action_id}`)}
                     type="button" variant="outline">Can’t deliver</Button>
                   : <span />}
               </div>
@@ -850,7 +992,7 @@ function FailedDeliveryPage() {
     try {
       const result = await postForm<{ case_id: string; report_id?: string; created?: boolean }>("/field/reports/failed-delivery", form);
       setReport(result);
-      window.history.replaceState({}, "", `/app/report/${shipmentId}?case_id=${result.case_id}`);
+      navigate(`/app/report/${shipmentId}?case_id=${result.case_id}`, { replace: true });
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "The report could not be saved.");
     } finally {
@@ -998,20 +1140,30 @@ function DamageReportPage() {
 
 function SimulatorPage() {
   const resource = useResource(() => apiRequest<CaseItem[]>("/communication/simulator/waiting"), [], 10_000);
-  const [caseId, setCaseId] = useState("");
+  const [caseId, setCaseId] = useState(() => new URLSearchParams(window.location.search).get("case_id") ?? "");
   const [optionType, setOptionType] = useState("redelivery");
   const [slot, setSlot] = useState("09:00–12:00");
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [submittedCase, setSubmittedCase] = useState<CaseItem | null>(null);
+  const [recordedChoice, setRecordedChoice] = useState<{ caseId: string; optionType: string; slot: string | null } | null>(null);
   useEffect(() => {
     if (!caseId && resource.data?.length) setCaseId(resource.data[0].case_id);
   }, [caseId, resource.data]);
+  const selectedInQueue = resource.data?.find((item) => item.case_id === caseId);
+  const selected = selectedInQueue ?? (submittedCase?.case_id === caseId ? submittedCase : undefined);
+  const cases = resource.data ?? [];
+  const options = selected && !selectedInQueue ? [...cases, selected] : cases;
+  const choiceAlreadyRecorded = recordedChoice?.caseId === caseId;
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!selected || choiceAlreadyRecorded) return;
     setFeedback(null);
     try {
       await postJson("/communication/simulator/choice", {
         case_id: caseId, option_type: optionType, slot: optionType === "redelivery" ? slot : null,
       });
+      setSubmittedCase(selected);
+      setRecordedChoice({ caseId, optionType, slot: optionType === "redelivery" ? slot : null });
       setFeedback("Customer choice recorded in the case timeline.");
       await resource.refresh();
     } catch (cause) { setFeedback(cause instanceof Error ? cause.message : "Choice could not be recorded."); }
@@ -1024,7 +1176,7 @@ function SimulatorPage() {
       <form className="max-w-xl space-y-4" onSubmit={(event) => void submit(event)}>
         <label className="block text-sm">Case waiting for the customer
           <select className="mt-1 h-11 w-full rounded-md border bg-background px-2" onChange={(event) => setCaseId(event.target.value)} required value={caseId}>
-            {(resource.data ?? []).map((item) => <option key={item.case_id} value={item.case_id}>{item.case_id} · {typeLabels[item.exception_type]} · {item.shipment_id}</option>)}
+            {options.map((item) => <option key={item.case_id} value={item.case_id}>{item.case_id} · {typeLabels[item.exception_type]} · {item.shipment_id}</option>)}
           </select>
         </label>
         <label className="block text-sm">Customer choice
@@ -1037,9 +1189,14 @@ function SimulatorPage() {
             <option>09:00–12:00</option><option>12:00–15:00</option><option>15:00–18:00</option>
           </select>
         </label>}
-        <Button disabled={!resource.data?.length} type="submit">Send choice to webhook</Button>
+        <Button disabled={!options.length || choiceAlreadyRecorded} type="submit">Send choice to webhook</Button>
       </form>
-      {!resource.data?.length && <p className="mt-4 text-sm text-muted-foreground">No cases are waiting for a customer choice.</p>}
+      {choiceAlreadyRecorded && recordedChoice && (
+        <p className="mt-4 text-sm" role="status">
+          Recorded for {caseId}: {recordedChoice.optionType === "redelivery" ? `redelivery · ${recordedChoice.slot}` : "pickup point"}.
+        </p>
+      )}
+      {!options.length && <p className="mt-4 text-sm text-muted-foreground">No cases are waiting for a customer choice.</p>}
     </CardContent></Card>
   </>;
 }

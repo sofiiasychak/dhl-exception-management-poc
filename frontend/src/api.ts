@@ -1,3 +1,5 @@
+import { mockApiRequest, publicDemoMode } from "./mockApi";
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "/api";
 const TOKEN_KEY = "exception-management-id-token";
 
@@ -5,6 +7,7 @@ export async function apiRequest<T>(
   path: string,
   init: RequestInit = {},
 ): Promise<T> {
+  if (publicDemoMode) return mockApiRequest<T>(path, init);
   const token = localStorage.getItem(TOKEN_KEY);
   const headers = new Headers(init.headers);
   if (token) headers.set("Authorization", `Bearer ${token}`);
