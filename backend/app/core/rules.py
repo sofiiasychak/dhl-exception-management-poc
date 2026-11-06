@@ -45,6 +45,13 @@ def validate_exception_type(value: str) -> ExceptionType:
         raise RuleViolation(f"Unsupported exception type: {value}.") from error
 
 
+def validate_single_shipment(shipment_ids: Iterable[str]) -> str:
+    linked = list(shipment_ids)
+    if len(linked) != 1 or not linked[0].strip():
+        raise RuleViolation("Every case must link to exactly one shipment.")
+    return linked[0]
+
+
 def find_open_case(
     cases: Iterable[Mapping[str, object]],
     shipment_id: str,
@@ -109,6 +116,10 @@ def can_assign_action(role: Role) -> bool:
     return role is Role.OPS
 
 
+def can_escalate_to_operations(role: Role) -> bool:
+    return role in {Role.SUPPORT, Role.COURIER, Role.DEPOT}
+
+
 def change_status(
     current: CaseStatus,
     target: CaseStatus,
@@ -155,6 +166,17 @@ def gps_flagged(distance_m: int | float) -> bool:
 
 def can_send_message(role: Role) -> bool:
     return role is Role.SUPPORT
+
+
+def notified_before_customer_contact(
+    inbound_contacts: Iterable[Mapping[str, object]],
+    sent_at: datetime,
+) -> bool:
+    return not any(
+        contact.get("occurred_at") < sent_at
+        for contact in inbound_contacts
+        if isinstance(contact.get("occurred_at"), datetime)
+    )
 
 
 def message_duplicate(

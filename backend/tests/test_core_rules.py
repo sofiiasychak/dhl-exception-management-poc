@@ -13,6 +13,7 @@ from app.core.rules import (
     can_assign_action,
     can_assign_owner,
     can_attempt_delivery,
+    can_escalate_to_operations,
     can_send_message,
     can_view_field_action,
     deadline_for,
@@ -20,17 +21,24 @@ from app.core.rules import (
     find_open_case,
     gps_flagged,
     message_duplicate,
+    notified_before_customer_contact,
     override_priority,
     resolved_on_time,
     return_to_sender_date,
     sort_support_queue,
     support_queue,
     validate_exception_type,
+    validate_single_shipment,
     change_status,
 )
 
 
 def test_r1_one_open_case_matches_shipment_and_type():
+    assert validate_single_shipment(["shipment-1"]) == "shipment-1"
+    with pytest.raises(RuleViolation):
+        validate_single_shipment([])
+    with pytest.raises(RuleViolation):
+        validate_single_shipment(["shipment-1", "shipment-2"])
     cases = [
         {"shipment_id": "1", "exception_type": "delay", "status": "in_progress"},
         {"shipment_id": "1", "exception_type": "delay", "status": "resolved"},
@@ -78,6 +86,11 @@ def test_r4_assignments_are_ops_only_and_owner_is_region_specific():
     assert auto_owner("Kyiv-East", users) == "marta"
     assert can_assign_owner(Role.OPS) and can_assign_action(Role.OPS)
     assert not can_assign_owner(Role.SUPPORT) and not can_assign_action(Role.DEPOT)
+    assert can_escalate_to_operations(Role.SUPPORT)
+    assert can_escalate_to_operations(Role.COURIER)
+    assert not can_escalate_to_operations(Role.OPS)
+    with pytest.raises(RuleViolation):
+        auto_owner("unknown-region", users)
 
 
 def test_r5_status_change_records_old_new_actor_and_time():
@@ -115,6 +128,10 @@ def test_r9_only_support_sends_and_duplicate_template_is_blocked_for_24_hours():
     assert not can_send_message(Role.OPS)
     assert message_duplicate(sent, "failed-delivery", now)
     assert not message_duplicate(sent, "failed-delivery", now + timedelta(hours=2))
+    assert notified_before_customer_contact([], now)
+    assert not notified_before_customer_contact(
+        [{"occurred_at": now - timedelta(minutes=1)}], now
+    )
 
 
 def test_r10_support_queue_state_and_priority_sort():
