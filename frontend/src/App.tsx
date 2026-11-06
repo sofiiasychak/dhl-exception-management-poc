@@ -154,13 +154,22 @@ function Loading({ label = "Loading…" }: { label?: string }) {
   return <p aria-live="polite" className="p-4 text-sm text-muted-foreground">{label}</p>;
 }
 
+function PriorityChip({ priority }: { priority: string }) {
+  const label = priority.charAt(0).toUpperCase() + priority.slice(1);
+  return <span className={`priority-chip priority-${priority.toLowerCase()}`}>{label}</span>;
+}
+
+function StatusChip({ status }: { status: string }) {
+  return <span className="status-chip">{status}</span>;
+}
+
 function PageTitle({ title, description, children }: {
-  title: string; description?: string; children?: ReactNode;
+  title: ReactNode; description?: string; children?: ReactNode;
 }) {
   return (
     <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
       <div>
-        <h1 className="text-2xl font-semibold">{title}</h1>
+        <h1 className="text-3xl font-bold tracking-tight">{title}</h1>
         {description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}
       </div>
       {children}
@@ -209,7 +218,11 @@ function SignInPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center p-4">
+    <div className="flex min-h-screen flex-col">
+      <header className="app-header flex min-h-16 items-center px-5">
+        <span className="text-xl font-bold">Exception Management</span>
+      </header>
+      <main className="flex flex-1 items-center justify-center p-4">
       <Card className="w-full max-w-lg">
         <CardHeader>
           <CardTitle>Exception Management</CardTitle>
@@ -259,7 +272,9 @@ function SignInPage() {
           )}
         </CardContent>
       </Card>
-    </main>
+      </main>
+      <footer className="app-footer">Student concept · not a DHL product</footer>
+    </div>
   );
 }
 
@@ -276,9 +291,9 @@ function AppLayout() {
   const defaultPath = user.role === "ops" ? "/app/cases"
     : user.role === "support" ? "/app/updates" : "/app/actions";
 
-  return (
-    <div className={field ? "mx-auto min-h-screen w-full max-w-[390px] border-x bg-background md:my-6 md:min-h-[calc(100vh-3rem)] md:rounded-xl md:border md:shadow-sm" : "min-h-screen"}>
-      <header className="flex min-h-16 items-center justify-between border-b px-4 py-3">
+  const content = (
+    <div className={field ? "field-shell" : "min-h-screen"}>
+      <header className="app-header flex min-h-16 items-center justify-between border-b px-4 py-3">
         <Link className="font-semibold" to={defaultPath}>Exception Management</Link>
         <div className="flex items-center gap-3">
           {!field && <span className="hidden text-sm text-muted-foreground sm:inline">{roleTitles[user.role]} · {user.email}</span>}
@@ -286,7 +301,7 @@ function AppLayout() {
         </div>
       </header>
       {field ? (
-        <div className="p-4">
+        <div className="field-content flex flex-col p-4">
           <p className="mb-4 text-sm text-muted-foreground">{roleTitles[user.role]} · {user.email}</p>
           <Routes>
             <Route element={<FieldActionsPage />} path="/app/actions" />
@@ -294,20 +309,19 @@ function AppLayout() {
             <Route element={<DamageReportPage />} path="/app/damage" />
             <Route element={<Navigate replace to={defaultPath} />} path="*" />
           </Routes>
-          <nav aria-label="Field navigation" className="mt-5 grid grid-cols-2 gap-2 border-t pt-3">
+          <nav aria-label="Field navigation" className="field-nav mt-auto grid grid-cols-2 gap-2">
             {links[user.role].map(([label, path]) => (
               <NavLink className={({ isActive }) => `rounded-md px-2 py-2 text-center text-sm ${isActive ? "bg-muted font-semibold" : "text-muted-foreground"}`}
                 key={path} to={path}>{label}</NavLink>
             ))}
           </nav>
-          <p className="pt-4 text-center text-xs text-muted-foreground">Student concept · not a DHL product</p>
         </div>
       ) : (
-        <div className="grid min-h-[calc(100vh-4rem)] md:grid-cols-[15rem_1fr]">
-          <nav aria-label={`${roleTitles[user.role]} navigation`} className="border-b p-3 md:border-b-0 md:border-r">
+        <div className="grid min-h-[calc(100vh-7rem)] md:grid-cols-[15rem_1fr]">
+          <nav aria-label={`${roleTitles[user.role]} navigation`} className="border-b bg-card p-3 md:border-b-0 md:border-r">
             <ul className="flex flex-wrap gap-2 md:flex-col">
               {links[user.role].map(([label, path]) => (
-                <li key={path}>
+                <li key={label}>
                   {path === "#" ? (
                     <button className="min-h-11 rounded-md px-3 text-sm text-muted-foreground" disabled type="button">{label}</button>
                   ) : (
@@ -327,10 +341,23 @@ function AppLayout() {
               <Route element={<SimulatorPage />} path="/simulator" />
               <Route element={<Navigate replace to={defaultPath} />} path="*" />
             </Routes>
-            <p className="mt-8 text-center text-xs text-muted-foreground">Student concept · not a DHL product</p>
           </main>
         </div>
       )}
+    </div>
+  );
+  if (field) {
+    return (
+      <div className="field-preview">
+        {content}
+        <footer className="app-footer field-footer">Student concept · not a DHL product</footer>
+      </div>
+    );
+  }
+  return (
+    <div className="web-app">
+      {content}
+      <footer className="app-footer">Student concept · not a DHL product</footer>
     </div>
   );
 }
@@ -357,9 +384,9 @@ function CaseQueuePage() {
   const recent = resource.data?.find((item) => Date.now() - new Date(item.created_at).getTime() < 5 * 60_000);
   return (
     <>
-      {recent && <Card className="mb-5 border-2"><CardContent className="flex flex-wrap items-center justify-between gap-3 pt-5">
+      {recent && <Card className="mb-5 border-2 border-accent bg-accent text-accent-foreground"><CardContent className="flex flex-wrap items-center justify-between gap-3 pt-5">
         <strong>New case assigned to you</strong>
-        <span>{recent.case_id} · {typeLabels[recent.exception_type]} · {recent.priority.toUpperCase()}</span>
+        <span>{recent.case_id} · {typeLabels[recent.exception_type]} · <PriorityChip priority={recent.priority} /></span>
         <Link className="font-semibold underline" to={`/app/cases/${recent.case_id}`}>Open case</Link>
       </CardContent></Card>}
       <PageTitle title="Cases" description="High first, then least time left. Refreshes every 10 seconds." />
@@ -387,18 +414,18 @@ function CaseQueuePage() {
       {resource.loading && !resource.data ? <Loading /> : (
         <div className="overflow-x-auto rounded-lg border">
           <table className="w-full min-w-[850px] border-collapse text-left text-sm">
-            <thead><tr className="border-b bg-muted">
+            <thead><tr className="border-b bg-accent text-accent-foreground">
               {["Priority", "Case", "Type", "Shipment", "Status", "Next action with", "Customer informed", "Time left (48 h)"].map((item) => <th className="p-3" key={item}>{item}</th>)}
             </tr></thead>
             <tbody>{(resource.data ?? []).map((item) => {
               const hours = Math.floor((new Date(item.deadline_at).getTime() - Date.now()) / 3_600_000);
               const overdue = hours < 0;
               return <tr className="border-b last:border-0" key={item.case_id}>
-                <td className="p-3 font-semibold">{item.priority.toUpperCase()}</td>
+                <td className="p-3"><PriorityChip priority={item.priority} /></td>
                 <td className="p-3"><Link className="underline" to={`/app/cases/${item.case_id}`}>{item.case_id}</Link></td>
                 <td className="p-3">{typeLabels[item.exception_type]}</td>
                 <td className="p-3">{item.shipment_id}</td>
-                <td className="p-3">{statusLabels[item.status]}</td>
+                <td className="p-3"><StatusChip status={statusLabels[item.status]} /></td>
                 <td className="p-3">{item.owner_id ? item.next_action ?? "— not assigned" : "— not assigned"}</td>
                 <td className="p-3">{item.customer_informed ? "Yes" : "No"}</td>
                 <td className={`p-3 ${overdue ? "font-bold" : ""}`}>{overdue ? `Overdue ${Math.abs(hours)} h` : `${hours} h`}</td>
@@ -460,8 +487,12 @@ function CaseDetailsPage() {
   return (
     <>
       <p className="mb-4 text-sm"><Link className="underline" to="/app/cases">Cases</Link> / {caseItem.case_id}</p>
-      <PageTitle title={`${caseItem.case_id} · ${typeLabels[caseItem.exception_type]}`}
-        description={`Shipment ${caseItem.shipment_id} · ${statusLabels[caseItem.status]} · owner ${caseItem.owner_id ?? "unassigned"}`}>
+      <PageTitle title={<span className="flex flex-wrap items-center gap-3">
+        {caseItem.case_id} · {typeLabels[caseItem.exception_type]}
+        <PriorityChip priority={caseItem.priority} />
+        <StatusChip status={statusLabels[caseItem.status]} />
+      </span>}
+        description={`Shipment ${caseItem.shipment_id} · owner ${caseItem.owner_id ?? "unassigned"}`}>
         <Card><CardContent className="p-3 text-sm">Resolve by {new Date(caseItem.deadline_at).toLocaleString()}<br />
           <strong>{deadlineHours < 0 ? `Overdue ${Math.abs(deadlineHours)} h` : `${deadlineHours} h left`}</strong>
         </CardContent></Card>
@@ -637,14 +668,14 @@ function SupportUpdatesPage() {
             <button className={`w-full rounded-lg border p-4 text-left ${selected?.case_id === item.case_id ? "border-foreground bg-muted" : ""}`}
               key={item.case_id} onClick={() => setSelectedId(item.case_id)} type="button">
               <strong>{item.case_id} · {typeLabels[item.exception_type]}</strong>
-              <span className="mt-2 block">{item.priority.toUpperCase()}</span>
+              <span className="mt-2 block"><PriorityChip priority={item.priority} /></span>
               <span className="mt-1 block text-sm text-muted-foreground">{item.shipment_id}</span>
             </button>
           ))}
         </aside>
         {selected ? (
           <section>
-            <h2 className="mb-3 text-xl font-semibold">{selected.case_id} · {typeLabels[selected.exception_type]} · {selected.priority.toUpperCase()}</h2>
+            <h2 className="mb-3 flex flex-wrap items-center gap-2 text-xl font-bold">{selected.case_id} · {typeLabels[selected.exception_type]} <PriorityChip priority={selected.priority} /></h2>
             <Card className="mb-4"><CardContent className="space-y-2 p-4 text-sm">
               <p><strong>Shipment:</strong> {selected.shipment_id} · {selected.shipment.product} · {selected.shipment.region}</p>
               <p><strong>What happened:</strong> {String(selected.timeline?.find((item) => item.reason)?.reason ?? typeLabels[selected.exception_type])}</p>
@@ -748,13 +779,13 @@ function FieldActionsPage() {
       <div className="space-y-4">
         {(resource.data ?? []).map((action) => {
           const shipment = action.shipment ?? action.case?.shipment;
-          return <Card className="border-2" key={action.action_id}>
+          return           <Card className="border-2 bg-card" key={action.action_id}>
             <CardHeader><div className="flex justify-between gap-3">
               <CardTitle className="text-lg">Stop {action.route_order} · {action.action_type}</CardTitle>
               {action.case?.attempt_count && <span className="whitespace-nowrap text-sm">Attempt {action.case.attempt_count} of 3</span>}
             </div></CardHeader>
             <CardContent className="space-y-3">
-              {action.slot && <div className="rounded-md bg-primary p-3 text-primary-foreground"><strong>Customer’s slot: {action.slot}</strong></div>}
+              {action.slot && <div className="rounded-sm bg-accent p-3 text-accent-foreground"><strong>Customer’s slot: {action.slot}</strong></div>}
               <p className="font-semibold">{shipment?.recipient_name ?? "Depot handling action"}</p>
               <p>{shipment?.address ?? shipment?.region}</p>
               <p className="text-sm text-muted-foreground">Parcel {action.shipment_id}{action.case && ` · case ${action.case.case_id}`}</p>
@@ -853,7 +884,9 @@ function FailedDeliveryPage() {
       <p className="mt-2 max-w-sm text-sm text-muted-foreground">Operations and Support see it now. The customer will get new delivery options.</p>
       {error && <ErrorMessage>{error}</ErrorMessage>}
       {secondsLeft > 0 && <Button className="mt-5" disabled={busy} onClick={() => void undo()} type="button" variant="outline">Undo · {secondsLeft} s</Button>}
-      <Button className="mt-5 min-h-[52px] w-full" onClick={() => navigate("/app/actions")} type="button">Next stop</Button>
+      <div className="field-sticky-action mt-5 w-full">
+        <Button className="min-h-[52px] w-full" onClick={() => navigate("/app/actions")} type="button">Next stop</Button>
+      </div>
     </section>
   ) : (
     <>
@@ -879,7 +912,9 @@ function FailedDeliveryPage() {
         </label>
         {photo && <p className="text-sm">{photo.name}</p>}
         {error && <ErrorMessage>{error}</ErrorMessage>}
-        <Button className="min-h-[52px] w-full" disabled={busy || !reason || (reason === "other" && !note.trim())} type="submit">Report</Button>
+        <div className="field-sticky-action">
+          <Button className="min-h-[52px] w-full" disabled={busy || !reason || (reason === "other" && !note.trim())} type="submit">Report</Button>
+        </div>
       </form>
       {actionId && <p className="mt-4 text-xs text-muted-foreground">Action {actionId}</p>}
       <p className="mt-3 text-center text-xs text-muted-foreground">Three taps from the stop · under 15 seconds</p>
@@ -953,7 +988,9 @@ function DamageReportPage() {
       <label className="block text-sm">Note · optional
         <textarea className="mt-1 min-h-24 w-full rounded-md border p-3" onChange={(event) => setNote(event.target.value)} value={note} />
       </label>
-      <Button className="min-h-[52px] w-full" disabled={!damageTypes.length || !photos.length || !contentsChecked} type="submit">Report damage</Button>
+      <div className="field-sticky-action">
+        <Button className="min-h-[52px] w-full" disabled={!damageTypes.length || !photos.length || !contentsChecked} type="submit">Report damage</Button>
+      </div>
       <p className="text-center text-sm text-muted-foreground">Creates a Damaged parcel case for Operations</p>
     </form>}
   </>;

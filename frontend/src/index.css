@@ -3,19 +3,21 @@
 @tailwind utilities;
 
 :root {
-  --background: 0 0% 100%;
-  --foreground: 222.2 84% 4.9%;
+  --background: 0 0% 94.1%;
+  --foreground: 0 0% 10.2%;
   --card: 0 0% 100%;
-  --card-foreground: 222.2 84% 4.9%;
-  --primary: 222.2 47.4% 11.2%;
-  --primary-foreground: 210 40% 98%;
-  --muted: 210 40% 96.1%;
-  --muted-foreground: 215.4 16.3% 36%;
-  --border: 214.3 31.8% 83%;
-  --input: 214.3 31.8% 83%;
-  --ring: 222.2 84% 4.9%;
-  --destructive: 0 72% 35%;
-  --radius: 0.5rem;
+  --card-foreground: 0 0% 10.2%;
+  --primary: 357.5 95.4% 42.4%;
+  --primary-foreground: 0 0% 100%;
+  --accent: 48 100% 50%;
+  --accent-foreground: 0 0% 0%;
+  --muted: 0 0% 94.1%;
+  --muted-foreground: 0 0% 34.9%;
+  --border: 0 0% 82%;
+  --input: 0 0% 82%;
+  --ring: 357.5 95.4% 42.4%;
+  --destructive: 357.5 95.4% 42.4%;
+  --radius: 4px;
 }
 
 * {
@@ -27,5 +29,206 @@ body {
   min-width: 320px;
   background: hsl(var(--background));
   color: hsl(var(--foreground));
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: "Source Sans 3", sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+select,
+textarea {
+  border-radius: var(--radius);
+  background-color: white;
+  color: hsl(var(--foreground));
+  min-height: 44px;
+}
+
+input:not([type="checkbox"]):not([type="radio"]),
+select,
+textarea {
+  accent-color: hsl(var(--primary));
+}
+
+nav a[aria-current="page"] {
+  background: hsl(var(--accent));
+  color: hsl(var(--accent-foreground));
+  font-weight: 700;
+}
+
+table tbody tr:hover {
+  background: hsl(var(--accent) / 0.16);
+}
+
+th {
+  font-weight: 700;
+}
+
+a {
+  color: hsl(var(--primary));
+  text-underline-offset: 0.18em;
+}
+
+:focus-visible {
+  outline: 3px solid hsl(var(--primary));
+  outline-offset: 3px;
+}
+
+::selection {
+  background: hsl(var(--accent));
+  color: hsl(var(--accent-foreground));
+}
+
+.app-header {
+  background: hsl(var(--accent));
+  color: hsl(var(--accent-foreground));
+  border-color: hsl(var(--accent-foreground));
+}
+
+.app-header a {
+  color: inherit;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.app-header button {
+  border-color: hsl(var(--accent-foreground));
+  background: transparent;
+  color: hsl(var(--accent-foreground));
+}
+
+.app-header button:hover {
+  background: rgb(0 0 0 / 8%);
+}
+
+.app-footer {
+  padding: 0.65rem 1rem;
+  background: hsl(var(--accent));
+  color: hsl(var(--accent-foreground));
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.priority-chip,
+.status-chip {
+  display: inline-flex;
+  min-height: 1.75rem;
+  align-items: center;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  padding: 0.1rem 0.65rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.priority-high {
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+}
+
+.priority-medium {
+  background: hsl(var(--accent));
+  color: hsl(var(--accent-foreground));
+}
+
+.priority-low {
+  background: hsl(0 0% 90%);
+  color: hsl(var(--foreground));
+}
+
+.status-chip {
+  border-color: hsl(var(--border));
+  background: white;
+  color: hsl(var(--foreground));
+}
+
+.field-preview {
+  width: min(100%, 390px);
+  margin-inline: auto;
+  background: hsl(var(--background));
+}
+
+.field-shell {
+  display: flex;
+  min-height: 100dvh;
+  flex-direction: column;
+  overflow: clip;
+  border-inline: 1px solid hsl(var(--border));
+  background: hsl(var(--background));
+}
+
+.field-content {
+  flex: 1;
+}
+
+.field-nav {
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
+  margin-inline: -1rem;
+  padding: 0.75rem 1rem max(0.75rem, env(safe-area-inset-bottom));
+  border-top: 1px solid hsl(var(--border));
+  background: white;
+}
+
+.field-nav a {
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.field-nav a[aria-current="page"] {
+  background: hsl(var(--accent));
+  color: hsl(var(--accent-foreground));
+}
+
+.field-sticky-action {
+  position: sticky;
+  bottom: 4.75rem;
+  z-index: 5;
+  margin-inline: -1rem;
+  padding: 0.75rem 1rem;
+  border-top: 1px solid hsl(var(--border));
+  background: hsl(var(--background) / 0.97);
+}
+
+@media (min-width: 768px) {
+  .field-shell {
+    min-height: min(900px, calc(100dvh - 3rem));
+    margin-block: 1.5rem 0;
+    border: 1px solid hsl(var(--border));
+    border-radius: 8px 8px 0 0;
+    box-shadow: 0 8px 28px rgb(0 0 0 / 8%);
+  }
+
+  .field-footer {
+    margin-bottom: 1.5rem;
+    border: 1px solid hsl(var(--border));
+    border-top: 0;
+    border-radius: 0 0 8px 8px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
 }
